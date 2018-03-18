@@ -1,0 +1,181 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <Winsock2.h>
+#define HAVE_REMOTE
+#include "pcap/pcap.h"
+
+#pragma warning(disable:4996)
+
+#pragma comment(lib, "wpcap.lib")
+#pragma comment(lib, "ws2_32.lib")
+
+typedef struct s_ethernet_header 
+{
+	unsigned char src_macadrr[6];
+	unsigned char des_macadrr[6];
+	unsigned short ether_type;
+} ETH_Header;
+
+typedef struct s_ip_header
+{
+	unsigned char Version : 4;
+	unsigned char Header_Length : 4;
+	unsigned char TOS;
+	unsigned short Total_Length;
+	unsigned short Identification;
+	unsigned char IP_Flags_x : 1;
+	unsigned char IP_Flags_D : 1;
+	unsigned char IP_Flags_M : 1;
+	unsigned char Fragment_offset1 : 5;
+	unsigned char Fragment_offset2;
+	unsigned char TTL;
+	unsigned char Protocol;
+	unsigned short Check_sum;
+	struct in_addr Src_Adrr;
+	struct in_addr Des_Adrr;
+} IP_Header;
+
+typedef struct s_tcp_header
+{
+   unsigned short Src_Port;
+   unsigned short Des_Port;
+   unsigned int SQN_Num;
+   unsigned int ACK_Num;
+   unsigned char Offset;
+   unsigned char Reserved;
+   unsigned char TCP_Flags_C : 1;
+   unsigned char TCP_Flags_E : 1;
+   unsigned char TCP_Flags_U : 1;
+   unsigned char TCP_Flags_A : 1;
+   unsigned char TCP_Flags_P : 1;
+   unsigned char TCP_Flags_R : 1;
+   unsigned char TCP_Flags_S : 1;
+   unsigned char TCP_Flags_F : 1;
+   unsigned short Window;
+   unsigned short Check_sum;
+   unsigned short Urgent_Pointer;
+} TCP_Header;
+
+void Print_ETH_Header(unsigned short ETH_Type, ETH_Header * ethernet);
+void Print_IP_Header(IP_Header * ethernet);
+void Print_TCP_Header(TCP_Header * ethernet);
+
+int main(void)
+{
+   pcap_if_t * alldevs = NULL;
+   pcap_if_t * device;
+   pcap_t * current;
+   int i = 0, result;
+   char errbuf[PCAP_ERRBUF_SIZE];
+   struct bpf_program BPF;
+   struct pcap_pkthdr * header;
+   const char *pkt_data;
+   ETH_Header * ethernet;
+   IP_Header * IP;
+   TCP_Header * TCP;
+
+   /* Get Netword Adapters And Print Description*/
+
+   if (pcap_findalldevs(&alldevs, errbuf) == -1)
+   {
+      fprintf(stderr, "Error in pcap_findalldevs : %s\n", errbuf);
+      return -1;
+   }
+
+   for (device = alldevs; device != NULL; device = device->next)
+   {
+      printf("%d. %s // %s\n", ++i, device->description, device->name);
+   }
+  
+   if (i == 0)
+   {
+      printf("\nNo interfaces found!\n");
+      return;
+   }
+  
+   printf("Use the Realtek Network Adapter");
+
+   /*====================================*/
+   device = alldevs;
+
+   for (i = 0; i < 2; i++)
+      device = device->next;
+
+   if((current = pcap_open_live(device->name, 10000, 1, 1000, errbuf)) == -1)   // Activate Network Adapter for capturing packet
+   {
+      fprintf(stderr, "Error in pcap_open_live : %s\n", errbuf);
+      pcap_freealldevs(alldevs);
+      return -1;
+   }
+  
+   if (pcap_compile(current, &BPF, "tcp", 1, NULL) < 0)
+   {
+      fprintf(stderr, "Error in pcap_compile : %s\n", errbuf);
+      pcap_freealldevs(alldevs);
+      return -1;
+   }
+
+   if (pcap_setfilter(current, &BPF) < 0)
+   {
+      fprintf(stderr, "Error in pcap_setfilter : %s\n", errbuf);
+      pcap_freealldevs(alldevs);
+      return -1;
+   }
+
+   pcap_freealldevs(alldevs);
+
+   while ((result = pcap_next_ex(current, &header, &pkt_data)) > 0)
+   {
+      unsigned short ETH_Type;
+      ethernet = NULL;
+      IP = NULL;
+      TCP = NULL;
+
+      ethernet = (ETH_Header*)pkt_data;
+      ETH_Type = ntohs(ethernet->ether_type);
+
+      Print_ETH_Header(ETH_Type, ethernet);
+     
+      pkt_data += sizeof(ETH_Header);
+
+      IP = (IP_Header*)pkt_data;
+
+      Print_IP_Header(IP);
+
+      pkt_data += sizeof(IP_Header);
+
+      TCP = (TCP_Header*)pkt_data;
+
+      Print_TCP_Header(TCP);
+
+      printf("\n\n");
+   }
+   system("pause");
+   return 0;
+}
+
+void Print_ETH_Header(unsigned short ETH_Type, ETH_Header * ethernet)
+{
+   if (ETH_Type == 0x0800)
+      printf("Ethernet Type : IPv4\n");
+   else if(ETH_Type == 0x0806)
+      printf("Ethernet Type : ARP\n");
+
+   printf("Source MAC Address : %02x %02x %02x %02x %02x %02x\n", ethernet->src_macadrr[0], ethernet->src_macadrr[1],
+      ethernet->src_macadrr[2], ethernet->src_macadrr[3], ethernet->src_macadrr[4], ethernet->src_macadrr[5]);
+
+   printf("Destination MAC Address : %02x %02x %02x %02x %02x %02x\n", ethernet->des_macadrr[0], ethernet->des_macadrr[1],
+      ethernet->des_macadrr[2], ethernet->des_macadrr[3], ethernet->des_macadrr[4], ethernet->des_macadrr[5]);
+}
+
+void Print_IP_Header(IP_Header * ethernet)
+{
+   printf("(TCP) Source IP : %s\n", inet_ntoa(ethernet->Src_Adrr));
+   printf("(TCP) Destination IP : %s\n", inet_ntoa(ethernet->Des_Adrr));
+}
+
+void Print_TCP_Header(TCP_Header * ethernet)
+{
+   printf("Source Port : %d\n", ntohs(ethernet->Src_Port));
+   printf("Destination Port : %d\n", ntohs(ethernet->Des_Port));
+} 
