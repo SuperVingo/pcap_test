@@ -161,21 +161,21 @@ void Print_ETH_Header(unsigned short ETH_Type, ETH_Header * ethernet)
    else if(ETH_Type == 0x0806)
       printf("Ethernet Type : ARP\n");
 
-   printf("Source MAC Address : %02x %02x %02x %02x %02x %02x\n", ethernet->src_macaddr[0], ethernet->src_macaddr[1],
-      ethernet->src_macaddr[2], ethernet->src_macaddr[3], ethernet->src_macaddr[4], ethernet->src_macaddr[5]);
+   printf("Source MAC Address : %02x %02x %02x %02x %02x %02x\n", MAC->src_macaddr[0], MAC->src_macaddr[1],
+      MAC->src_macaddr[2], MAC->src_macaddr[3], MAC->src_macaddr[4], MAC->src_macaddr[5]);
 
-   printf("Destination MAC Address : %02x %02x %02x %02x %02x %02x\n", ethernet->des_macaddr[0], ethernet->des_macaddr[1],
-      ethernet->des_macaddr[2], ethernet->des_macaddr[3], ethernet->des_macaddr[4], ethernet->des_macaddr[5]);
+   printf("Destination MAC Address : %02x %02x %02x %02x %02x %02x\n", MAC->des_macaddr[0], MAC->des_macaddr[1],
+      MAC->des_macaddr[2], MAC->des_macaddr[3], MAC->des_macaddr[4], MAC->des_macaddr[5]);
 }
 
 void Print_IP_Header(IP_Header * ethernet)
 {
-   printf("(TCP) Source IP : %s\n", inet_ntoa(ethernet->src_ipaddr));
-   printf("(TCP) Destination IP : %s\n", inet_ntoa(ethernet->des_ipaddr));
+   printf("(TCP) Source IP : %s\n", inet_ntoa(IPt->src_ipaddr));
+   printf("(TCP) Destination IP : %s\n", inet_ntoa(IP->des_ipaddr));
 }
 
 void Print_TCP_Header(TCP_Header * ethernet)
 {
-   printf("Source Port : %d\n", ntohs(ethernet->src_port));
-   printf("Destination Port : %d\n", ntohs(ethernet->des_port));
+   printf("Source Port : %d\n", ntohs(TCP->src_port));
+   printf("Destination Port : %d\n", ntohs(TCP->des_port));
 } 
