@@ -1,180 +1,184 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <stdint.h>
+#include <WinSock2.h>
+#define HAVE_REMOTE
 #include "pcap/pcap.h"
 #pragma warning(disable:4996)
 #pragma comment(lib, "wpcap.lib")
 #pragma comment(lib, "ws2_32.lib")
 
-typedef struct Mac_Header 
+typedef struct Ethernet_Header
 {
-	unsigned char des_macaddr[6];
-	unsigned char src_macaddr[6];
-	unsigned short ether_type;
-} Mac_Header;
+	uint8_t des_macaddr[6];
+	uint8_t src_macaddr[6];
+	uint16_t ether_type;
+} Ethernet_Header;
 
 typedef struct IP_Header
 {
-	unsigned char Version : 4;
-	unsigned char Header_Length : 4;
-	unsigned char TOS;
-	unsigned short Total_Length;
-	unsigned short Identification;
-	unsigned char IP_Flags_x : 1;
-	unsigned char IP_Flags_D : 1;
-	unsigned char IP_Flags_M : 1;
-	unsigned char Fragment_offset1;
-	unsigned char Fragment_offset2 : 5;
-	unsigned char TTL;
-	unsigned char Protocol;
-	unsigned short Check_sum;
-	IN_ADDR in_addr src_ipaddr;
+	uint8_t Version : 4;
+	uint8_t Header_Length : 4;
+	uint8_t TOS;
+	uint16_t Total_Length;
+	uint16_t Identification;
+	uint8_t IP_Flags_x : 1;
+	uint8_t IP_Flags_D : 1;
+	uint8_t IP_Flags_M : 1;
+	uint8_t Fragment_offset1;
+	uint8_t Fragment_offset2 : 5;
+	uint8_t TTL;
+	uint8_t Protocol;
+	uint16_t Check_sum;
+	IN_ADDR src_ipaddr;
 	IN_ADDR des_ipaddr;
 } IP_Header;
 
 typedef struct TCP_Header
 {
-   unsigned short src_port;
-   unsigned short des_port;
-   unsigned int SQN_Num;
-   unsigned int ACK_Num;
-   unsigned char Offset;
-   unsigned char Reserved;
-   unsigned char TCP_Flags_C : 1;
-   unsigned char TCP_Flags_E : 1;
-   unsigned char TCP_Flags_U : 1;
-   unsigned char TCP_Flags_A : 1;
-   unsigned char TCP_Flags_P : 1;
-   unsigned char TCP_Flags_R : 1;
-   unsigned char TCP_Flags_S : 1;
-   unsigned char TCP_Flags_F : 1;
-   unsigned short Window_Size;
-   unsigned short Check_sum;
-   unsigned short Urgent_Pointer;
+	uint16_t src_port;
+	uint16_t des_port;
+	uint32_t SQN_Num;
+	uint32_t ACK_Num;
+	uint8_t Offset : 4;
+	uint8_t Reserved : 4;
+	uint8_t TCP_Flags_C : 1;
+	uint8_t TCP_Flags_E : 1;
+	uint8_t TCP_Flags_U : 1;
+	uint8_t TCP_Flags_A : 1;
+	uint8_t TCP_Flags_P : 1;
+	uint8_t TCP_Flags_R : 1;
+	uint8_t TCP_Flags_S : 1;
+	uint8_t TCP_Flags_F : 1;
+	uint16_t Window_Size;
+	uint16_t Check_sum;
+	uint16_t Urgent_Pointer;
 } TCP_Header;
 
-void Print_Mac_Header(unsigned short ETH_Type, ETH_Header * MAC);
+void Print_Ethernet_Header(Ethernet_Header * MAC);
 void Print_IP_Header(IP_Header * IP);
 void Print_TCP_Header(TCP_Header * TCP);
 
 int main(void)
 {
-   pcap_if_t * alldevs = NULL;
-   pcap_if_t * device;
-   pcap_t * current;
-   int i = 0;
-   int result;
-   char errbuf[PCAP_ERRBUF_SIZE];
-   struct bpf_program BPF;
-   struct pcap_pkthdr * header;
-   const char *pkt_data;
-   MAC_Header * MAC;
-   IP_Header * IP;
-   TCP_Header * TCP;
+	pcap_if_t * alldevs = NULL;
+	pcap_if_t * device;
+	pcap_t * current;
+	int i = 0, select = 0;
+	int result;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	struct bpf_program BPF;
+	struct pcap_pkthdr * header;
+	const char *pkt_data;
+	Ethernet_Header * MAC;
+	IP_Header * IP;
+	TCP_Header * TCP;
 
-   /* Get Netword Adapters And Print Description*/
+	/* Get Netword Adapters And Print Description*/
 
-   if (pcap_findalldevs(&alldevs, errbuf) == -1)
-   {
-      fprintf(stderr, "Error in pcap_findalldevs : %s\n", errbuf);
-      return -1;
-   }
+	if (pcap_findalldevs(&alldevs, errbuf) == -1)
+	{
+		fprintf(stderr, "Error in pcap_findalldevs : %s\n", errbuf);
+		return -1;
+	}
 
-   for (device = alldevs; device != NULL; device = device->next)
-   {
-      printf("%d. %s // %s\n", ++i, device->description, device->name);
-   }
-  
-   if (i == 0)
-   {
-      printf("\nNo interfaces found!\n");
-      return;
-   }
-  
-   printf(" : ");
-   scanf("%d", &i);
-   /*====================================*/
-   
-   device = alldevs;
+	for (device = alldevs; device != NULL; device = device->next)
+	{
+		printf("%d. %s // %s\n", ++i, device->description, device->name);
+	}
 
-   for (i = 0; i < 4; i++)
-      device = device->next;
+	if (i == 0)
+	{
+		printf("\nNo interfaces found!\n");
+		return;
+	}
 
-   if((current = pcap_open_live(device->name, 10000, 1, 1000, errbuf)) == -1)   // Activate Network Adapter for capturing packet
-   {
-      fprintf(stderr, "Error in pcap_open_live : %s\n", errbuf);
-      pcap_freealldevs(alldevs);
-      return -1;
-   }
-  
-   if (pcap_compile(current, &BPF, "tcp", 1, NULL) < 0)
-   {
-      fprintf(stderr, "Error in pcap_compile : %s\n", errbuf);
-      pcap_freealldevs(alldevs);
-      return -1;
-   }
+	printf(" : ");
+	scanf("%d", &select);
+	/*====================================*/
 
-   if (pcap_setfilter(current, &BPF) < 0)
-   {
-      fprintf(stderr, "Error in pcap_setfilter : %s\n", errbuf);
-      pcap_freealldevs(alldevs);
-      return -1;
-   }
+	device = alldevs;
 
-   pcap_freealldevs(alldevs);
+	for (i = 0; i < select-1; i++) // 배열은 0부터시작. 우리가 입력받은건 1부터 시작이므로 1을 빼줘야함 
+		device = device->next;
 
-   while ((result = pcap_next_ex(current, &header, &pkt_data)) > 0)
-   {
-      unsigned short ETH_Type;
-      ethernet = NULL;
-      IP = NULL;
-      TCP = NULL;
+	if ((current = pcap_open_live(device->name, 10000, 1, 1000, errbuf)) == NULL)   // Activate Network Adapter for capturing packet
+	{
+		fprintf(stderr, "Error in pcap_open_live : %s\n", errbuf);
+		pcap_freealldevs(alldevs);
+		return -1;
+	}
 
-      ethernet = (ETH_Header*)pkt_data;
-      ETH_Type = ntohs(ethernet->ether_type);
+	if (pcap_compile(current, &BPF, "tcp", 1, 0) < 0)
+	{
+		fprintf(stderr, "Error in pcap_compile : %s\n", errbuf);
+		pcap_freealldevs(alldevs);
+		return -1;
+	}
 
-      Print_ETH_Header(ETH_Type, ethernet);
-     
-      pkt_data += sizeof(ETH_Header);
+	if (pcap_setfilter(current, &BPF) < 0)
+	{
+		fprintf(stderr, "Error in pcap_setfilter : %s\n", errbuf);
+		pcap_freealldevs(alldevs);
+		return -1;
+	}
 
-      IP = (IP_Header*)pkt_data;
+	pcap_freealldevs(alldevs);
 
-      Print_IP_Header(IP);
+	while ((result = pcap_next_ex(current, &header, &pkt_data)) > 0)
+	{
+		MAC = NULL;
+		IP = NULL;
+		TCP = NULL;
 
-      pkt_data += sizeof(IP_Header);
+		MAC = (Ethernet_Header*)pkt_data;
 
-      TCP = (TCP_Header*)pkt_data;
+		Print_Ethernet_Header(MAC);
 
-      Print_TCP_Header(TCP);
+		pkt_data += sizeof(Ethernet_Header);
 
-      printf("\n\n");
-   }
-   system("pause");
-   return 0;
+		IP = (IP_Header*)pkt_data;
+
+		Print_IP_Header(IP);
+
+		pkt_data += sizeof(IP_Header);
+
+		TCP = (TCP_Header*)pkt_data;
+
+		Print_TCP_Header(TCP);
+
+		printf("\n\n");
+	}
+	system("pause");
+
+	pcap_close(current);
+	return 0;
 }
 
-void Print_ETH_Header(unsigned short ETH_Type, ETH_Header * ethernet)
+void Print_Ethernet_Header(Ethernet_Header * MAC)
 {
-   if (ETH_Type == 0x0800)
-      printf("Ethernet Type : IPv4\n");
-   else if(ETH_Type == 0x0806)
-      printf("Ethernet Type : ARP\n");
+	uint16_t ETH_Type = ntohs(MAC->ether_type);
 
-   printf("Source MAC Address : %02x %02x %02x %02x %02x %02x\n", MAC->src_macaddr[0], MAC->src_macaddr[1],
-      MAC->src_macaddr[2], MAC->src_macaddr[3], MAC->src_macaddr[4], MAC->src_macaddr[5]);
+	if (ETH_Type == 0x0800)
+		printf("Ethernet Type : IPv4\n");
+	else if (ETH_Type == 0x0806)
+		printf("Ethernet Type : ARP\n");
 
-   printf("Destination MAC Address : %02x %02x %02x %02x %02x %02x\n", MAC->des_macaddr[0], MAC->des_macaddr[1],
-      MAC->des_macaddr[2], MAC->des_macaddr[3], MAC->des_macaddr[4], MAC->des_macaddr[5]);
+	printf("Source MAC Address : %02x %02x %02x %02x %02x %02x\n", MAC->src_macaddr[0], MAC->src_macaddr[1],
+		MAC->src_macaddr[2], MAC->src_macaddr[3], MAC->src_macaddr[4], MAC->src_macaddr[5]);
+
+	printf("Destination MAC Address : %02x %02x %02x %02x %02x %02x\n", MAC->des_macaddr[0], MAC->des_macaddr[1],
+		MAC->des_macaddr[2], MAC->des_macaddr[3], MAC->des_macaddr[4], MAC->des_macaddr[5]);
 }
 
-void Print_IP_Header(IP_Header * ethernet)
+void Print_IP_Header(IP_Header * IP)
 {
-   printf("(TCP) Source IP : %s\n", inet_ntoa(IPt->src_ipaddr));
-   printf("(TCP) Destination IP : %s\n", inet_ntoa(IP->des_ipaddr));
+	printf("(TCP) Source IP : %s\n", inet_ntoa(IP->src_ipaddr));
+	printf("(TCP) Destination IP : %s\n", inet_ntoa(IP->des_ipaddr));
 }
 
-void Print_TCP_Header(TCP_Header * ethernet)
+void Print_TCP_Header(TCP_Header * TCP)
 {
-   printf("Source Port : %d\n", ntohs(TCP->src_port));
-   printf("Destination Port : %d\n", ntohs(TCP->des_port));
-} 
+	printf("Source Port : %d\n", ntohs(TCP->src_port));
+	printf("Destination Port : %d\n", ntohs(TCP->des_port));
+}
