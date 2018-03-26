@@ -91,7 +91,7 @@ int main(void)
       return;
    }
   
-   printf("Use the Realtek Network Adapter");
+   printf(" : ");
    scanf("%d", &i);
    /*====================================*/
    
