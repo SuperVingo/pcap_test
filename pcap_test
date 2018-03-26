@@ -94,6 +94,7 @@ int main(void)
    printf("Use the Realtek Network Adapter");
    scanf("%d", &i);
    /*====================================*/
+   
    device = alldevs;
 
    for (i = 0; i < 4; i++)
