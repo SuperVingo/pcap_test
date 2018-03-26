@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define HAVE_REMOTE
+
 #include "pcap/pcap.h"
-
 #pragma warning(disable:4996)
-
 #pragma comment(lib, "wpcap.lib")
 #pragma comment(lib, "ws2_32.lib")
 
